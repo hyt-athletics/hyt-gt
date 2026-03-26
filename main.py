@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import QApplication
 from src.algorithms.registry import AlgorithmRegistry
 from src.algorithms.runner import AlgorithmRunner
 from src.core.data_store import DataStore
-from src.core.font_utils import qt_cjk_font
+from src.core.font_utils import qt_cjk_font, setup_matplotlib_cjk
 from src.ui.main_window import MainWindow
 
 WORKSPACE = Path.home() / "geophys-workspace"
@@ -47,6 +47,9 @@ def main() -> None:
     cjk_font = qt_cjk_font()
     if cjk_font:
         app.setFont(QFont(cjk_font, 9))
+
+    # 配置 matplotlib 中文字体
+    setup_matplotlib_cjk()
 
     win = MainWindow(runner, registry, boreholes, pipelines_dir)
     win.show()

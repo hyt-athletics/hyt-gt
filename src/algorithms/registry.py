@@ -79,6 +79,12 @@ class AlgorithmRegistry:
         if src_dir not in sys.path:
             sys.path.insert(0, src_dir)
 
+        # 确保 algorithms.base 指向 src.algorithms.base
+        # 这样算法模块中的 `from algorithms.base import ...` 会使用同一个模块对象
+        if "algorithms.base" not in sys.modules:
+            from . import base
+            sys.modules["algorithms.base"] = base
+
         spec = importlib.util.spec_from_file_location(module_name, module_file)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)

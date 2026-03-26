@@ -7,6 +7,8 @@ from .base import BaseReader
 
 # 自动探测这些分隔符（按优先级）
 _SEP_CANDIDATES = [",", "\t", ";", r"\s+"]
+# 编码探测顺序
+_ENCODING_CANDIDATES = ["utf-8", "gbk", "gb2312", "latin-1"]
 
 
 class TextReader(BaseReader):
@@ -21,6 +23,17 @@ class TextReader(BaseReader):
     @property
     def supported_extensions(self) -> tuple[str, ...]:
         return (".csv", ".txt", ".dat", ".asc")
+
+    def _detect_encoding(self, path: Path, probe_bytes: int = 4096) -> str:
+        """探测文件编码，返回首个能成功解码的编码名。"""
+        raw = path.read_bytes()[:probe_bytes]
+        for enc in _ENCODING_CANDIDATES:
+            try:
+                raw.decode(enc)
+                return enc
+            except (UnicodeDecodeError, LookupError):
+                continue
+        return "latin-1"
 
     def read(self, path: Path) -> dict[str, np.ndarray]:
         df = self._read_df(path)
@@ -37,8 +50,9 @@ class TextReader(BaseReader):
 
     def _detect_separator(self, path: Path, probe_lines: int = 20) -> str:
         """读取文件前 N 行（跳过注释），逐个尝试分隔符，返回首个成功的。"""
+        encoding = self._detect_encoding(path)
         head_lines: list[str] = []
-        with open(path, encoding="utf-8", errors="replace") as f:
+        with open(path, encoding=encoding, errors="replace") as f:
             for raw_line in f:
                 if raw_line.strip().startswith("#") or not raw_line.strip():
                     continue
@@ -72,9 +86,11 @@ class TextReader(BaseReader):
 
     def _parse_with_sep(self, path: Path, sep: str) -> pd.DataFrame:
         """用已确定的分隔符单次读取整个文件。"""
+        encoding = self._detect_encoding(path)
         df = pd.read_csv(
             path, sep=sep, engine="python",
             skip_blank_lines=True, comment="#",
+            encoding=encoding,
         )
 
         all_numeric_header = all(
@@ -85,6 +101,7 @@ class TextReader(BaseReader):
             df = pd.read_csv(
                 path, sep=sep, engine="python",
                 skip_blank_lines=True, comment="#", header=None,
+                encoding=encoding,
             )
             df.columns = [f"col_{i}" for i in range(df.shape[1])]
 
