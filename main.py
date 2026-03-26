@@ -1,5 +1,19 @@
+import os
 import sys
 from pathlib import Path
+
+# Windows 控制台 UTF-8 支持（避免中文乱码）
+if sys.platform == "win32":
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    try:
+        os.system("chcp 65001 >nul 2>&1")
+    except Exception:
+        pass
+
+# Windows 高 DPI 缩放支持
+if sys.platform == "win32":
+    os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "1")
+    os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
 from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
