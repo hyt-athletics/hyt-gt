@@ -74,7 +74,7 @@
 
 ### 2.2 模型总览
 
-![三维地质模型总览](../tests/data/geo_model_3d/geo_model_3d_overview.png)
+![三维地质模型总览](images/geo_model_3d_overview.png)
 
 - 左上：电阻率模型（对数色标）
 - 右上：极化率模型
@@ -83,7 +83,7 @@
 
 ### 2.3 EMIGMA/Voxler 风格六视图综合图板
 
-![六视图综合图板](../tests/data/geo_model_3d/demo_3d_emigma_style.png)
+![六视图综合图板](images/demo_3d_emigma_style.png)
 
 | 位置  | 内容                                             |
 | ----- | ------------------------------------------------ |
@@ -96,7 +96,7 @@
 
 ### 2.4 Petrel 式 Fence Diagram
 
-![Fence Diagram](../tests/data/geo_model_3d/demo_fence_diagram.png)
+![Fence Diagram](images/demo_fence_diagram.png)
 
 沿钻孔连线的 2.5D 电阻率剖面：
 
@@ -123,7 +123,7 @@
 
 ### 3.2 测井三算法滤波对比
 
-![测井滤波对比](../tests/data/logging_workflow.png)
+![测井滤波对比](images/logging_workflow.png)
 
 对真实 LAS 数据（自然伽马曲线）运行三种滤波算法：
 
@@ -133,7 +133,7 @@
 
 ### 3.3 TEM 一维正演-反演工作流
 
-![TEM工作流](../tests/data/tem_workflow.png)
+![TEM工作流](images/tem_workflow.png)
 
 合成三层模型（200 / 10 / 1000 Ω·m）→ empymod 正演 → 5% 噪声 → Occam 反演：
 
@@ -142,7 +142,7 @@
 
 ### 3.4 综合九子图演示
 
-![综合演示](../tests/data/demo_full_pipeline.png)
+![综合演示](images/demo_full_pipeline.png)
 
 ---
 
@@ -164,12 +164,12 @@ $$\Phi(m) = \|Gm - d_{obs}\|^2 + \lambda \|Lm\|^2$$
 
 ### 4.3 三维反演结果
 
-![三维反演对比](../tests/data/demo_compiled_report/demo_3d_inversion_3dview.png)
+![三维反演对比](images/demo_3d_inversion_3dview.png)
 
 - 第一行：真实模型（体渲染 / 正交剖面 / 等值面）
 - 第二行：反演结果（体渲染 / 正交剖面 / 嵌套等值面 20/50/80 Ω·m）
 
-![数据拟合统计](../tests/data/demo_compiled_report/demo_3d_inversion_stats.png)
+![数据拟合统计](images/demo_3d_inversion_stats.png)
 
 ### 4.4 源码版 vs 编译版对比
 
@@ -206,7 +206,7 @@ $$\Phi(m) = \|Gm - d_{obs}\|^2 + \lambda \|Lm\|^2$$
 
 ### 5.2 可视化对比
 
-![神经网络算法对比](../tests/data/demo_real_nn/demo_real_nn_algorithms.png)
+![神经网络算法对比](images/demo_real_nn_algorithms.png)
 
 - 第一行：U-Net CT 去噪（含噪输入 / 去噪输出 / 真实模型）
 - 第二行：GWO-SVM 岩性识别（真实岩性 / 预测结果 / 分类分布）
