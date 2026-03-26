@@ -1,0 +1,93 @@
+{
+  "name": "tem_forward_3d",
+  "display_name": "三维地-井瞬变电磁正演",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "forward",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TemForward3d"
+  },
+  "inputs": [
+    {
+      "name": "conductivity",
+      "label": "电导率模型 S/m",
+      "type": "ndarray_3d",
+      "file": "conductivity.npz"
+    },
+    {
+      "name": "tx_locations",
+      "label": "发射源位置",
+      "type": "ndarray_2d",
+      "file": "tx_locations.csv"
+    },
+    {
+      "name": "rx_locations",
+      "label": "接收点位置",
+      "type": "ndarray_2d",
+      "file": "rx_locations.csv"
+    },
+    {
+      "name": "t_min",
+      "label": "最小时间 log10(s)",
+      "type": "float",
+      "default": -5.0,
+      "required": false
+    },
+    {
+      "name": "t_max",
+      "label": "最大时间 log10(s)",
+      "type": "float",
+      "default": -2.0,
+      "required": false
+    },
+    {
+      "name": "n_times",
+      "label": "时间通道数",
+      "type": "int",
+      "default": 30,
+      "required": false
+    },
+    {
+      "name": "dx",
+      "label": "x方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dy",
+      "label": "y方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dz",
+      "label": "z方向间距 m",
+      "type": "float",
+      "default": 2.5,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "response",
+      "label": "TEM响应数据",
+      "type": "ndarray_2d"
+    },
+    {
+      "name": "times",
+      "label": "时间通道",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "mesh_file",
+      "label": "计算网格",
+      "type": "mesh"
+    }
+  ]
+}

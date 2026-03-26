@@ -1,0 +1,16 @@
+{
+  "name": "tem_inv_lbfgs_2d",
+  "display_name": "二维地-井TEM有限内存法反演",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "inversion",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TemInvLbfgs2d"
+  },
+  "inputs": [],
+  "outputs": []
+}

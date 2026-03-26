@@ -1,0 +1,104 @@
+{
+  "name": "tem_inv_lbfgs_3d",
+  "display_name": "三维TEM有限内存法反演",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "inversion",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TemInvLbfgs3d"
+  },
+  "inputs": [
+    {
+      "name": "observed_data",
+      "label": "观测数据",
+      "type": "ndarray_2d",
+      "file": "observed_data.csv"
+    },
+    {
+      "name": "tx_locations",
+      "label": "发射源位置",
+      "type": "ndarray_2d",
+      "file": "tx_locations.csv"
+    },
+    {
+      "name": "rx_locations",
+      "label": "接收点位置",
+      "type": "ndarray_2d",
+      "file": "rx_locations.csv"
+    },
+    {
+      "name": "times",
+      "label": "时间通道",
+      "type": "ndarray_1d",
+      "file": "times.csv"
+    },
+    {
+      "name": "initial_model",
+      "label": "初始模型",
+      "type": "ndarray_3d",
+      "file": "initial_model.npz",
+      "required": false
+    },
+    {
+      "name": "n_layers_x",
+      "label": "x方向网格数",
+      "type": "int",
+      "default": 20,
+      "required": false
+    },
+    {
+      "name": "n_layers_y",
+      "label": "y方向网格数",
+      "type": "int",
+      "default": 20,
+      "required": false
+    },
+    {
+      "name": "n_layers_z",
+      "label": "z方向网格数",
+      "type": "int",
+      "default": 20,
+      "required": false
+    },
+    {
+      "name": "lambda_",
+      "label": "正则化参数",
+      "type": "float",
+      "default": 0.001,
+      "required": false
+    },
+    {
+      "name": "max_iter",
+      "label": "最大迭代次数",
+      "type": "int",
+      "default": 20,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "recovered_model",
+      "label": "反演电导率模型",
+      "type": "ndarray_3d"
+    },
+    {
+      "name": "predicted_data",
+      "label": "预测数据",
+      "type": "ndarray_2d"
+    },
+    {
+      "name": "misfit",
+      "label": "RMS拟合误差",
+      "type": "float"
+    },
+    {
+      "name": "mesh_file",
+      "label": "计算网格",
+      "type": "mesh"
+    }
+  ]
+}

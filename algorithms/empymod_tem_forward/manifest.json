@@ -1,0 +1,89 @@
+{
+  "name": "empymod_tem_forward",
+  "display_name": "empymod TEM 1D 正演（水平层状介质）",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "forward",
+  "dimension": "1d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "EmpymodTEMForward"
+  },
+  "inputs": [
+    {
+      "name": "resistivity",
+      "label": "各层电阻率 (Ω·m)",
+      "type": "ndarray_1d",
+      "file": "resistivity.csv",
+      "description": "n_layers 个值，第一行为地表空气层 (2e14)"
+    },
+    {
+      "name": "depths",
+      "label": "层顶深度 (m)",
+      "type": "ndarray_1d",
+      "file": "depths.csv",
+      "description": "n_layers-1 个值（第一层从地面开始，不需要顶深）"
+    },
+    {
+      "name": "src_depth",
+      "label": "发射机深度 (m)",
+      "type": "float",
+      "default": 0.0,
+      "required": false
+    },
+    {
+      "name": "rec_depth",
+      "label": "接收机深度 (m)",
+      "type": "float",
+      "default": 0.0,
+      "required": false
+    },
+    {
+      "name": "loop_radius",
+      "label": "发射线圈半径 (m)",
+      "type": "float",
+      "default": 50.0,
+      "required": false
+    },
+    {
+      "name": "t_min",
+      "label": "最小时间 (s, 对数)",
+      "type": "float",
+      "default": -5.0,
+      "required": false
+    },
+    {
+      "name": "t_max",
+      "label": "最大时间 (s, 对数)",
+      "type": "float",
+      "default": -2.0,
+      "required": false
+    },
+    {
+      "name": "n_times",
+      "label": "时道数",
+      "type": "int",
+      "default": 30,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "emf",
+      "label": "感应 dB/dt (V/(A·m²))",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "times",
+      "label": "时道中心时间 (s)",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "rho_app",
+      "label": "视电阻率 (Ω·m)",
+      "type": "ndarray_1d"
+    }
+  ]
+}

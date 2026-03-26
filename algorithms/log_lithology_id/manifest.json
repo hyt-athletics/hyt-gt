@@ -1,0 +1,16 @@
+{
+  "name": "log_lithology_id",
+  "display_name": "岩性与矿层智能识别",
+  "version": "1.0.0",
+  "method": "logging",
+  "category": "process",
+  "dimension": "1d",
+  "pipeline_role": "standalone",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "LogLithologyId"
+  },
+  "inputs": [],
+  "outputs": []
+}

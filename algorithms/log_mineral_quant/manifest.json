@@ -1,0 +1,16 @@
+{
+  "name": "log_mineral_quant",
+  "display_name": "多矿物智能定量评价",
+  "version": "1.0.0",
+  "method": "logging",
+  "category": "process",
+  "dimension": "1d",
+  "pipeline_role": "standalone",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "LogMineralQuant"
+  },
+  "inputs": [],
+  "outputs": []
+}

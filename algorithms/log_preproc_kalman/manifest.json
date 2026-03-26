@@ -1,0 +1,49 @@
+{
+  "name": "log_preproc_kalman",
+  "display_name": "测井Kalman滤波去噪",
+  "version": "1.0.0",
+  "method": "logging",
+  "category": "preprocess",
+  "dimension": "1d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "LogPreprocKalman"
+  },
+  "inputs": [
+    {
+      "name": "curve",
+      "label": "原始测井曲线（如 GR、电阻率等）",
+      "type": "ndarray_1d",
+      "file": "GR.csv",
+      "required": true
+    },
+    {
+      "name": "process_noise",
+      "label": "过程噪声方差（越小越平滑，建议 0.001–0.1）",
+      "type": "float",
+      "default": 0.01,
+      "required": false
+    },
+    {
+      "name": "measurement_noise",
+      "label": "测量噪声方差（建议 0.1–10.0）",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "curve_filtered",
+      "label": "Kalman 平滑后曲线",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "snr_improvement",
+      "label": "信噪比改善量 (dB)",
+      "type": "float"
+    }
+  ]
+}

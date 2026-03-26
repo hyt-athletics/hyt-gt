@@ -1,0 +1,19 @@
+{
+  "name": "logging_multi_filter",
+  "display_name": "测井三算法滤波对比流水线（SG → 小波 → Kalman）",
+  "method": "logging",
+  "steps": [
+    {
+      "algo": "log_preproc_savgol",
+      "output_key": "curve_sg"
+    },
+    {
+      "algo": "log_preproc_wavelet",
+      "input_map": { "curve": "curve_sg" }
+    },
+    {
+      "algo": "log_preproc_kalman",
+      "input_map": { "curve": "curve_sg" }
+    }
+  ]
+}

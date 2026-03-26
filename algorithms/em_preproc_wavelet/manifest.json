@@ -1,0 +1,16 @@
+{
+  "name": "em_preproc_wavelet",
+  "display_name": "井间电磁波小波变换去噪",
+  "version": "1.0.0",
+  "method": "em",
+  "category": "preprocess",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "EmPreprocWavelet"
+  },
+  "inputs": [],
+  "outputs": []
+}

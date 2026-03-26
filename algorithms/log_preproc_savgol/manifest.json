@@ -1,0 +1,49 @@
+{
+  "name": "log_preproc_savgol",
+  "display_name": "测井曲线 Savitzky-Golay 平滑滤波",
+  "version": "1.0.0",
+  "method": "logging",
+  "category": "preprocess",
+  "dimension": "1d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "LogPreprocSavgol"
+  },
+  "inputs": [
+    {
+      "name": "curve",
+      "label": "原始测井曲线（任意曲线，如 GR）",
+      "type": "ndarray_1d",
+      "file": "GR.csv"
+    },
+    {
+      "name": "window_length",
+      "label": "滤波窗口长度（奇数，建议 5–21）",
+      "type": "int",
+      "default": 11,
+      "required": false
+    },
+    {
+      "name": "polyorder",
+      "label": "多项式阶数（须 < window_length，建议 2–4）",
+      "type": "int",
+      "default": 3,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "curve_filtered",
+      "label": "滤波后曲线",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "snr_improvement",
+      "label": "信噪比改善量 (dB)",
+      "type": "float",
+      "description": "正值表示去噪效果良好，负值说明参数过度平滑"
+    }
+  ]
+}

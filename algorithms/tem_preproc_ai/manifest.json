@@ -1,0 +1,16 @@
+{
+  "name": "tem_preproc_ai",
+  "display_name": "TEM智能去噪",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "preprocess",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TemPreprocAi"
+  },
+  "inputs": [],
+  "outputs": []
+}

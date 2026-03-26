@@ -1,0 +1,16 @@
+{
+  "name": "ip_inv_occam_2d",
+  "display_name": "二维井-地IP Occam法反演",
+  "version": "1.0.0",
+  "method": "ip",
+  "category": "inversion",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "IpInvOccam2d"
+  },
+  "inputs": [],
+  "outputs": []
+}

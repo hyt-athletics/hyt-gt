@@ -1,0 +1,16 @@
+{
+  "name": "ip_forward_2d",
+  "display_name": "二维井-地IP正演",
+  "version": "1.0.0",
+  "method": "ip",
+  "category": "forward",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "IpForward2d"
+  },
+  "inputs": [],
+  "outputs": []
+}

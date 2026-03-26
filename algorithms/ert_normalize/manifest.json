@@ -1,0 +1,16 @@
+{
+  "name": "ert_normalize",
+  "display_name": "井地电阻率数据归一化",
+  "version": "1.0.0",
+  "method": "ert",
+  "category": "preprocess",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "ErtNormalize"
+  },
+  "inputs": [],
+  "outputs": []
+}

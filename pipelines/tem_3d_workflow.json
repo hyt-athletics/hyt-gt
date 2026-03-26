@@ -1,0 +1,19 @@
+{
+  "name": "tem_3d_workflow",
+  "display_name": "TEM 三维处理流程（预处理→正演→反演）",
+  "method": "tem",
+  "steps": [
+    {
+      "algo": "tem_preproc_ai",
+      "output_key": "emf_clean"
+    },
+    {
+      "algo": "tem_forward_3d",
+      "input_map": { "observed_data": "emf_clean" }
+    },
+    {
+      "algo": "tem_inv_lbfgs_3d",
+      "input_map": { "observed_data": "emf_clean" }
+    }
+  ]
+}

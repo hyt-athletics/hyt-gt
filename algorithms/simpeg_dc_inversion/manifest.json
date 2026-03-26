@@ -1,0 +1,87 @@
+{
+  "name": "simpeg_dc_inversion",
+  "display_name": "SimPEG DC 电阻率 2.5D 反演",
+  "version": "1.0.0",
+  "method": "ert",
+  "category": "inversion",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "SimPEGDCInversion"
+  },
+  "inputs": [
+    {
+      "name": "apparent_resistivity",
+      "label": "视电阻率观测值 (Ω·m)",
+      "type": "ndarray_1d",
+      "file": "apparent_resistivity.csv"
+    },
+    {
+      "name": "electrode_positions",
+      "label": "电极位置 (m)，shape [n_electrodes, 2] (x, z)",
+      "type": "ndarray_2d",
+      "file": "electrode_positions.csv"
+    },
+    {
+      "name": "abmn_indices",
+      "label": "ABMN 电极编号，shape [n_data, 4]",
+      "type": "ndarray_2d",
+      "file": "abmn_indices.csv"
+    },
+    {
+      "name": "rho_background",
+      "label": "初始均匀背景电阻率 (Ω·m)",
+      "type": "float",
+      "default": 100.0,
+      "required": false
+    },
+    {
+      "name": "alpha_s",
+      "label": "光滑度约束参数 (alpha_s)",
+      "type": "float",
+      "default": 1e-3,
+      "required": false
+    },
+    {
+      "name": "alpha_x",
+      "label": "水平光滑约束 (alpha_x)",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "alpha_z",
+      "label": "垂直光滑约束 (alpha_z)",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "max_iter",
+      "label": "最大迭代次数",
+      "type": "int",
+      "default": 10,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "resistivity_model",
+      "label": "反演电阻率模型 (Ω·m)",
+      "type": "ndarray_1d",
+      "description": "网格单元电阻率，按 SimPEG 网格顺序排列"
+    },
+    {
+      "name": "predicted",
+      "label": "正演拟合视电阻率 (Ω·m)",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "misfit",
+      "label": "归一化数据拟合误差 (phi_d)",
+      "type": "float"
+    }
+  ]
+}

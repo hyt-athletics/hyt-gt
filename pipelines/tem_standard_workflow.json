@@ -1,0 +1,19 @@
+{
+  "name": "tem_standard_workflow",
+  "display_name": "TEM 标准处理流程（去噪→正演→反演）",
+  "method": "tem",
+  "steps": [
+    {
+      "algo": "tem_preproc_wavelet",
+      "output_key": "emf_clean"
+    },
+    {
+      "algo": "tem_forward_2d",
+      "input_map": { "emf": "emf_clean" }
+    },
+    {
+      "algo": "tem_inv_lbfgs_2d",
+      "input_map": { "emf": "emf_clean" }
+    }
+  ]
+}

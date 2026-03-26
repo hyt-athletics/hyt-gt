@@ -1,0 +1,19 @@
+{
+  "name": "ert_standard_workflow",
+  "display_name": "ERT 标准处理流程（归一化→正演→反演）",
+  "method": "ert",
+  "steps": [
+    {
+      "algo": "ert_normalize",
+      "output_key": "apparent_resistivity_norm"
+    },
+    {
+      "algo": "ert_forward_25d",
+      "input_map": { "apparent_resistivity": "apparent_resistivity_norm" }
+    },
+    {
+      "algo": "ert_inv_gn_25d",
+      "input_map": { "apparent_resistivity": "apparent_resistivity_norm" }
+    }
+  ]
+}

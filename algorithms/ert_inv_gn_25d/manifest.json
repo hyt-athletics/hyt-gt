@@ -1,0 +1,16 @@
+{
+  "name": "ert_inv_gn_25d",
+  "display_name": "2.5D 井地电阻率高斯牛顿法反演",
+  "version": "1.0.0",
+  "method": "ert",
+  "category": "inversion",
+  "dimension": "2.5d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "ErtInvGn25d"
+  },
+  "inputs": [],
+  "outputs": []
+}

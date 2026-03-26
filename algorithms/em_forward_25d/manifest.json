@@ -1,0 +1,16 @@
+{
+  "name": "em_forward_25d",
+  "display_name": "2.5D井间电磁波正演",
+  "version": "1.0.0",
+  "method": "em",
+  "category": "forward",
+  "dimension": "2.5d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "EmForward25d"
+  },
+  "inputs": [],
+  "outputs": []
+}
