@@ -1,0 +1,77 @@
+{
+  "name": "tem_1d_inversion",
+  "display_name": "TEM 一维反演（Occam 正则化）",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "inversion",
+  "dimension": "1d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TEM1DInversion"
+  },
+  "inputs": [
+    {
+      "name": "emf",
+      "label": "感应 EMF 剖面",
+      "type": "ndarray_2d",
+      "file": "emf.csv",
+      "description": "形状 [n_depth, n_times]，单位 V·s/A"
+    },
+    {
+      "name": "times",
+      "label": "时道中心时间 (s)",
+      "type": "ndarray_1d",
+      "file": "times.csv",
+      "description": "长度 n_times"
+    },
+    {
+      "name": "n_layers",
+      "label": "反演层数",
+      "type": "int",
+      "default": 20,
+      "required": false
+    },
+    {
+      "name": "lambda_",
+      "label": "正则化系数 λ",
+      "type": "float",
+      "default": 0.001,
+      "required": false
+    },
+    {
+      "name": "depth_max",
+      "label": "最大深度 (m)",
+      "type": "float",
+      "default": 500.0,
+      "required": false
+    },
+    {
+      "name": "loop_radius",
+      "label": "发射线圈半径 (m)",
+      "type": "float",
+      "default": 50.0,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "resistivity",
+      "label": "电阻率模型 (Ω·m)",
+      "type": "ndarray_1d",
+      "description": "长度 n_layers"
+    },
+    {
+      "name": "layer_tops",
+      "label": "层顶深度 (m)",
+      "type": "ndarray_1d",
+      "description": "长度 n_layers"
+    },
+    {
+      "name": "misfit",
+      "label": "数据拟合误差 (RMS)",
+      "type": "float"
+    }
+  ]
+}

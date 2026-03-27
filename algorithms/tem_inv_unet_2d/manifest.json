@@ -1,0 +1,16 @@
+{
+  "name": "tem_inv_unet_2d",
+  "display_name": "基于U-Net的二维地-井TEM智能反演",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "inversion",
+  "dimension": "2d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "TemInvUnet2d"
+  },
+  "inputs": [],
+  "outputs": []
+}

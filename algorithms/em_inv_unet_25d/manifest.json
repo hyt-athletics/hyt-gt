@@ -1,0 +1,16 @@
+{
+  "name": "em_inv_unet_25d",
+  "display_name": "2.5D井间电磁波智能反演",
+  "version": "1.0.0",
+  "method": "em",
+  "category": "inversion",
+  "dimension": "2.5d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "EmInvUnet25d"
+  },
+  "inputs": [],
+  "outputs": []
+}

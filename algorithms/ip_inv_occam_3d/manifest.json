@@ -1,0 +1,124 @@
+{
+  "name": "ip_inv_occam_3d",
+  "display_name": "三维井-地IP Occam法反演",
+  "version": "1.0.0",
+  "method": "ip",
+  "category": "inversion",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "IpInvOccam3d"
+  },
+  "inputs": [
+    {
+      "name": "apparent_resistivity",
+      "label": "视电阻率数据",
+      "type": "ndarray_1d",
+      "file": "apparent_resistivity.csv"
+    },
+    {
+      "name": "apparent_chargeability",
+      "label": "视充电率数据",
+      "type": "ndarray_1d",
+      "file": "apparent_chargeability.csv"
+    },
+    {
+      "name": "electrode_positions",
+      "label": "电极位置",
+      "type": "ndarray_2d",
+      "file": "electrode_positions.csv"
+    },
+    {
+      "name": "initial_resistivity",
+      "label": "初始电阻率模型",
+      "type": "ndarray_3d",
+      "file": "initial_resistivity.npz",
+      "required": false
+    },
+    {
+      "name": "dx",
+      "label": "x方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dy",
+      "label": "y方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dz",
+      "label": "z方向间距 m",
+      "type": "float",
+      "default": 2.5,
+      "required": false
+    },
+    {
+      "name": "alpha_s",
+      "label": "模型光滑度权重",
+      "type": "float",
+      "default": 0.001,
+      "required": false
+    },
+    {
+      "name": "alpha_x",
+      "label": "x方向正则化权重",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "alpha_y",
+      "label": "y方向正则化权重",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "alpha_z",
+      "label": "z方向正则化权重",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "max_iter",
+      "label": "最大迭代次数",
+      "type": "int",
+      "default": 15,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "resistivity_model",
+      "label": "反演电阻率模型",
+      "type": "ndarray_3d"
+    },
+    {
+      "name": "chargeability_model",
+      "label": "反演充电率模型",
+      "type": "ndarray_3d"
+    },
+    {
+      "name": "predicted_rho",
+      "label": "预测视电阻率",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "misfit",
+      "label": "RMS拟合误差",
+      "type": "float"
+    },
+    {
+      "name": "mesh_file",
+      "label": "计算网格",
+      "type": "mesh"
+    }
+  ]
+}

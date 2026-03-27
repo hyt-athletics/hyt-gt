@@ -1,0 +1,72 @@
+{
+  "name": "ip_forward_3d",
+  "display_name": "三维井-地IP正演",
+  "version": "1.0.0",
+  "method": "ip",
+  "category": "forward",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "IpForward3d"
+  },
+  "inputs": [
+    {
+      "name": "resistivity",
+      "label": "电阻率模型 Ω·m",
+      "type": "ndarray_3d",
+      "file": "resistivity.npz"
+    },
+    {
+      "name": "chargeability",
+      "label": "充电率模型",
+      "type": "ndarray_3d",
+      "file": "chargeability.npz"
+    },
+    {
+      "name": "electrode_positions",
+      "label": "电极位置",
+      "type": "ndarray_2d",
+      "file": "electrode_positions.csv"
+    },
+    {
+      "name": "dx",
+      "label": "x方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dy",
+      "label": "y方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dz",
+      "label": "z方向间距 m",
+      "type": "float",
+      "default": 2.5,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "apparent_resistivity",
+      "label": "视电阻率",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "apparent_chargeability",
+      "label": "视充电率",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "mesh_file",
+      "label": "计算网格",
+      "type": "mesh"
+    }
+  ]
+}

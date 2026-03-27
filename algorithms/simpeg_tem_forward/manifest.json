@@ -1,0 +1,81 @@
+{
+  "name": "simpeg_tem_forward",
+  "display_name": "SimPEG TEM 3D 圆柱网格正演",
+  "version": "1.0.0",
+  "method": "tem",
+  "category": "forward",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "SimPEGTEMForward"
+  },
+  "inputs": [
+    {
+      "name": "layer_resistivity",
+      "label": "各层电阻率 (Ω·m)",
+      "type": "ndarray_1d",
+      "file": "resistivity.csv",
+      "description": "从地表到最深层"
+    },
+    {
+      "name": "layer_thickness",
+      "label": "各层厚度 (m)，最后一层不需要",
+      "type": "ndarray_1d",
+      "file": "layer_thickness.csv"
+    },
+    {
+      "name": "loop_radius",
+      "label": "发射回线半径 (m)",
+      "type": "float",
+      "default": 20.0,
+      "required": false
+    },
+    {
+      "name": "peak_current",
+      "label": "发射电流峰值 (A)",
+      "type": "float",
+      "default": 1.0,
+      "required": false
+    },
+    {
+      "name": "t_min",
+      "label": "最小观测时间 log10(s)",
+      "type": "float",
+      "default": -5.0,
+      "required": false
+    },
+    {
+      "name": "t_max",
+      "label": "最大观测时间 log10(s)",
+      "type": "float",
+      "default": -2.5,
+      "required": false
+    },
+    {
+      "name": "n_times",
+      "label": "时道数量",
+      "type": "int",
+      "default": 25,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "dbdt",
+      "label": "dB/dt 响应 (V/m²)",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "times",
+      "label": "观测时间 (s)",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "rho_app",
+      "label": "视电阻率 (Ω·m)",
+      "type": "ndarray_1d"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "name": "log_preproc_wavelet",
+  "display_name": "测井小波阈值法去噪",
+  "version": "1.0.0",
+  "method": "logging",
+  "category": "preprocess",
+  "dimension": "1d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "LogPreprocWavelet"
+  },
+  "inputs": [
+    {
+      "name": "curve",
+      "label": "原始测井曲线（如 GR、电阻率等）",
+      "type": "ndarray_1d",
+      "file": "GR.csv",
+      "required": true
+    },
+    {
+      "name": "wavelet",
+      "label": "小波基（db4 / sym6 / coif3 等）",
+      "type": "str",
+      "default": "db4",
+      "required": false
+    },
+    {
+      "name": "level",
+      "label": "分解层数（建议 3–6）",
+      "type": "int",
+      "default": 4,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "curve_filtered",
+      "label": "去噪后曲线",
+      "type": "ndarray_1d"
+    },
+    {
+      "name": "snr_improvement",
+      "label": "信噪比改善量 (dB)",
+      "type": "float"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "ip_preproc_3d",
+  "display_name": "三维井-地IP数据预处理",
+  "version": "1.0.0",
+  "method": "ip",
+  "category": "preprocess",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "IpPreproc3d"
+  },
+  "inputs": [
+    {
+      "name": "raw_data",
+      "label": "原始数据",
+      "type": "ndarray_2d",
+      "file": "raw_data.csv"
+    },
+    {
+      "name": "min_voltage",
+      "label": "最小电位阈值 mV",
+      "type": "float",
+      "default": 0.001,
+      "required": false
+    },
+    {
+      "name": "max_rho",
+      "label": "最大视电阻率阈值",
+      "type": "float",
+      "default": 10000.0,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "cleaned_data",
+      "label": "清洗后数据",
+      "type": "ndarray_2d"
+    },
+    {
+      "name": "mask",
+      "label": "质量掩码",
+      "type": "ndarray_1d"
+    }
+  ]
+}

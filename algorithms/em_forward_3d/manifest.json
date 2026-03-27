@@ -1,0 +1,74 @@
+{
+  "name": "em_forward_3d",
+  "display_name": "三维井间电磁波正演",
+  "version": "1.0.0",
+  "method": "em",
+  "category": "forward",
+  "dimension": "3d",
+  "pipeline_role": "step",
+  "entry": {
+    "type": "python",
+    "module": "algorithm",
+    "class": "EmForward3d"
+  },
+  "inputs": [
+    {
+      "name": "conductivity",
+      "label": "电导率模型 S/m",
+      "type": "ndarray_3d",
+      "file": "conductivity.npz"
+    },
+    {
+      "name": "tx_locations",
+      "label": "发射源位置",
+      "type": "ndarray_2d",
+      "file": "tx_locations.csv"
+    },
+    {
+      "name": "rx_locations",
+      "label": "接收点位置",
+      "type": "ndarray_2d",
+      "file": "rx_locations.csv"
+    },
+    {
+      "name": "frequency",
+      "label": "频率 Hz",
+      "type": "float",
+      "default": 100.0,
+      "required": false
+    },
+    {
+      "name": "dx",
+      "label": "x方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dy",
+      "label": "y方向间距 m",
+      "type": "float",
+      "default": 5.0,
+      "required": false
+    },
+    {
+      "name": "dz",
+      "label": "z方向间距 m",
+      "type": "float",
+      "default": 2.5,
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "response",
+      "label": "电磁响应数据",
+      "type": "ndarray_2d"
+    },
+    {
+      "name": "mesh_file",
+      "label": "计算网格",
+      "type": "mesh"
+    }
+  ]
+}
