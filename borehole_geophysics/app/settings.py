@@ -28,19 +28,93 @@ DEFAULT_SETTINGS = {
     # 网格
     'mesh': {
         'type': 'octree',                # octree / 25d / tet
+        'strategy': 'auto',              # auto / manual
         'max_level': 5,                  # 八叉树最大层级
+        'target_cell_size': None,        # 目标最小格子尺寸（m），None=自动估计
         'borehole_refine_levels': [      # 钻孔加密配置
             [5, 50],                     # [层级, 半径]
             [4, 150],
             [3, 300],
         ],
         'boundary_refine_level': 4,      # 异常体边界加密层级
+        'body_core_refine_level': None,  # 异常体内部加密层级，None=自动
+        'body_padding_refine_level': None, # 异常体外围包络加密层级，None=自动
+        'body_padding_distance': None,   # 异常体外围加密距离，None=自动
+        'active_model': {
+            'mode': 'auto',              # auto / manual
+            'bounds': {
+                'x_range': [250, 750],
+                'y_range': [250, 750],
+                'z_range': [0, 900],
+            },
+        },
     },
     
     # 正演
     'forward': {
         'engine': 'auto',                # auto / numba / numpy / harmonica / builtin
-        'method': 'gravity',             # gravity / magnetic / resistivity / seismic
+        'method': 'gravity',             # gravity / magnetic_3c / ...
+    },
+    
+    # 磁场参数
+    'magnetic': {
+        'b0_strength': 52000.0,          # nT
+        'b0_inclination': 55.0,          # degree
+        'b0_declination': -6.0,          # degree
+    },
+
+    # 反演
+    'inversion': {
+        'gravity': {
+            'preset': 'balanced',        # balanced / compact_body / wide_search
+            'max_iter': 5,
+            'relative_error': 0.03,
+            'noise_floor': None,
+            'lower_bound': -1.5,         # g/cc
+            'upper_bound': 1.5,          # g/cc
+            'regularization': {
+                'mode': 'smooth',        # smooth / compact
+                'reference_model': 'property',  # property / zero
+                'reference_model_in_smooth': False,
+                'alpha_s': 1.0,
+                'alpha_x': 1.0,
+                'alpha_y': 1.0,
+                'alpha_z': 1.0,
+                'norms': [0.0, 1.0, 1.0, 1.0],
+            },
+            'update_region': {
+                'mode': 'all_active',    # all_active / property_only / manual
+                'bounds': {
+                    'x_range': [300, 700],
+                    'y_range': [300, 700],
+                    'z_range': [50, 850],
+                },
+            },
+        },
+        'magnetic_3c': {
+            'preset': 'balanced',        # balanced / compact_body / wide_search
+            'max_iter': 8,
+            'lower_bound': 0.0,          # SI susceptibility
+            'upper_bound': 0.08,         # SI susceptibility
+            'regularization': {
+                'mode': 'smooth',        # smooth / compact
+                'reference_model': 'property',  # property / zero
+                'reference_model_in_smooth': False,
+                'alpha_s': 1.0,
+                'alpha_x': 1.0,
+                'alpha_y': 1.0,
+                'alpha_z': 1.0,
+                'norms': [0.0, 1.0, 1.0, 1.0],
+            },
+            'update_region': {
+                'mode': 'all_active',    # all_active / property_only / manual
+                'bounds': {
+                    'x_range': [300, 700],
+                    'y_range': [300, 700],
+                    'z_range': [50, 850],
+                },
+            },
+        },
     },
     
     # 显示

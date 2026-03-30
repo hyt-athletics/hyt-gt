@@ -34,7 +34,9 @@ class VTKExporter:
         ├── body_矿体1.vtp         ← 地质体表面
         ├── body_矿体2.vtp
         ├── gravity_result.csv     ← 正演结果
-        └── gravity_curve.vtp      ← 正演结果（3D曲线）
+        ├── gravity_curve.vtp      ← 重力曲线（3D）
+        ├── magnetic_result.csv    ← 磁法结果
+        └── magnetic_curve.vtp     ← 磁法曲线（3D）
     """
     
     def __init__(self, output_dir='vtk_output'):
@@ -52,6 +54,17 @@ class VTKExporter:
     def _path(self, filename):
         """获取完整路径"""
         return os.path.join(self.output_dir, filename)
+
+    def _register_block(self, name, filename):
+        """注册到 vtm，多次导出同名块时自动加后缀避免冲突。"""
+        existing_names = {block_name for block_name, _ in self.blocks}
+        final_name = name
+        if final_name in existing_names:
+            index = 2
+            while f"{name}_{index}" in existing_names:
+                index += 1
+            final_name = f"{name}_{index}"
+        self.blocks.append((final_name, filename))
     
     # ==========================================================
     #  导出八叉树网格
@@ -78,6 +91,7 @@ class VTKExporter:
         density_data = []
         susceptibility_data = []
         resistivity_data = []
+        conductivity_data = []
         velocity_data = []
         level_data = []
         cell_size_data = []
@@ -121,6 +135,7 @@ class VTKExporter:
             density_data.append(leaf.density)
             susceptibility_data.append(leaf.susceptibility)
             resistivity_data.append(leaf.resistivity)
+            conductivity_data.append(getattr(leaf, 'conductivity', 0.0))
             velocity_data.append(leaf.velocity)
             level_data.append(leaf.level)
             cell_size_data.append(leaf.min_edge)
@@ -137,13 +152,14 @@ class VTKExporter:
                 'density': np.array(density_data),
                 'susceptibility': np.array(susceptibility_data),
                 'resistivity': np.array(resistivity_data),
+                'conductivity': np.array(conductivity_data),
                 'velocity': np.array(velocity_data),
                 'octree_level': np.array(level_data),
                 'cell_size': np.array(cell_size_data),
             }
         )
         
-        self.blocks.append((name, filename))
+        self._register_block(name, filename)
     
     # ==========================================================
     #  导出八叉树（从to_arrays格式）
@@ -188,11 +204,17 @@ class VTKExporter:
         
         # 收集物性数据
         cell_data = {}
-        for key in ['density', 'susceptibility', 'resistivity', 'velocity']:
+        for key in ['density', 'susceptibility', 'resistivity', 'conductivity', 'velocity', 'vp', 'vs']:
             if key in mesh_data:
                 cell_data[key] = mesh_data[key]
         if 'volumes' in mesh_data:
             cell_data['volume'] = mesh_data['volumes']
+        for key in ['octree_level', 'cell_size', 'distance_to_well']:
+            if key in mesh_data:
+                cell_data[key] = mesh_data[key]
+        for key in ['roi_mask', 'near_well_mask', 'property_mask', 'update_mask', 'fixed_mask']:
+            if key in mesh_data:
+                cell_data[key] = np.asarray(mesh_data[key], dtype=np.int32)
         
         filename = f'{name}.vtu'
         write_vtu(
@@ -203,7 +225,7 @@ class VTKExporter:
             cell_data=cell_data
         )
         
-        self.blocks.append((name, filename))
+        self._register_block(name, filename)
     
     # ==========================================================
     #  导出2.5D三棱柱网格
@@ -243,7 +265,7 @@ class VTKExporter:
             cell_data=cell_data
         )
         
-        self.blocks.append((name, filename))
+        self._register_block(name, filename)
     
     # ==========================================================
     #  导出3D四面体网格
@@ -283,7 +305,7 @@ class VTKExporter:
             cell_data=cell_data
         )
         
-        self.blocks.append((name, filename))
+        self._register_block(name, filename)
     
     # ==========================================================
     #  导出2D三角网格
@@ -319,7 +341,7 @@ class VTKExporter:
             cell_data=cell_properties
         )
         
-        self.blocks.append((name, filename))
+        self._register_block(name, filename)
     
     # ==========================================================
     #  导出钻孔
@@ -349,7 +371,7 @@ class VTKExporter:
             points=path_points,
             polygons=lines,
         )
-        self.blocks.append((f'{name}_path', filename_path))
+        self._register_block(f'{name}_path', filename_path)
         
         # 观测点（每个点是一个顶点）
         stations = well.stations
@@ -376,7 +398,7 @@ class VTKExporter:
             cell_types=cell_types,
             point_data=point_data,
         )
-        self.blocks.append((f'{name}_stations', filename_stations))
+        self._register_block(f'{name}_stations', filename_stations)
     
     # ==========================================================
     #  导出地质体表面
@@ -428,7 +450,7 @@ class VTKExporter:
                 polygons=polygons,
                 cell_data=cell_data,
             )
-            self.blocks.append((f'{body.name}', filename))
+            self._register_block(f'body_{body.name}', filename)
     
     # ==========================================================
     #  导出正演结果
@@ -488,7 +510,7 @@ class VTKExporter:
                 'depth_m': result.depths,
             }
         )
-        self.blocks.append(('gravity_curve', filename_curve))
+        self._register_block('gravity_result_curve', filename_curve)
         
         # 也把原始钻孔位置的点导出，带gz值
         filename_points = f'{name}_at_stations.vtu'
@@ -505,7 +527,239 @@ class VTKExporter:
                 'depth_m': result.depths,
             }
         )
-        self.blocks.append(('gravity_at_stations', filename_points))
+        self._register_block('gravity_result_stations', filename_points)
+
+    def export_magnetic_result(self, result, name='magnetic'):
+        """
+        导出磁法结果：
+        1. CSV
+        2. 井轨迹上的带属性采样点
+        3. ΔT 三维偏移曲线
+        """
+        print(f"\n  导出磁法结果...")
+
+        filename_csv = f'{name}_result.csv'
+        write_csv_with_header(
+            self._path(filename_csv),
+            columns={
+                'depth_m': result.depths,
+                'bx_nT': result.bx,
+                'by_nT': result.by,
+                'bz_nT': result.bz,
+                'bt_nT': result.bt,
+                'x_m': np.full_like(result.depths, result.well.x),
+                'y_m': np.full_like(result.depths, result.well.y),
+            },
+            header_lines=[
+                '3C borehole magnetic survey result',
+                f'Well position: ({result.well.x}, {result.well.y})',
+                f'Depth range: {result.depths.min():.0f} ~ {result.depths.max():.0f} m',
+                f'Delta-T range: {result.bt.min():.4f} ~ {result.bt.max():.4f} nT',
+            ]
+        )
+
+        bt_normalized = result.bt.copy()
+        if np.ptp(bt_normalized) > 0:
+            scale = 100.0 / max(abs(bt_normalized).max(), 1e-10)
+        else:
+            scale = 1.0
+
+        curve_points = np.column_stack([
+            np.full_like(result.depths, result.well.x),
+            result.well.y + bt_normalized * scale,
+            result.depths
+        ])
+        lines = [(i, i + 1) for i in range(len(curve_points) - 1)]
+        filename_curve = f'{name}_curve.vtp'
+        write_vtp(
+            self._path(filename_curve),
+            points=curve_points,
+            polygons=lines,
+            point_data={
+                'bt_nT': result.bt,
+                'bx_nT': result.bx,
+                'by_nT': result.by,
+                'bz_nT': result.bz,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('magnetic_result_curve', filename_curve)
+
+        filename_points = f'{name}_at_stations.vtu'
+        cells = [[1, i] for i in range(len(result.depths))]
+        cell_types = [VTK_VERTEX] * len(result.depths)
+        magnetic_vector = np.column_stack([result.bx, result.by, result.bz])
+        write_vtu(
+            self._path(filename_points),
+            points=result.well.stations,
+            cells=cells,
+            cell_types=cell_types,
+            point_data={
+                'bx_nT': result.bx,
+                'by_nT': result.by,
+                'bz_nT': result.bz,
+                'bt_nT': result.bt,
+                'b_vector_nT': magnetic_vector,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('magnetic_result_stations', filename_points)
+
+    def export_gravity_inversion_result(self, result, name='gravity_inverse'):
+        """
+        导出重力反演结果：
+        1. recovered density 模型
+        2. 观测/预测/残差曲线
+        3. 井中站点属性
+        """
+        print(f"\n  导出重力反演结果...")
+
+        filename_csv = f'{name}_result.csv'
+        write_csv_with_header(
+            self._path(filename_csv),
+            columns={
+                'depth_m': result.depths,
+                'observed_gz_mGal': result.observed_gz,
+                'predicted_gz_mGal': result.predicted_gz,
+                'residual_mGal': result.residual,
+                'x_m': np.full_like(result.depths, result.well.x),
+                'y_m': np.full_like(result.depths, result.well.y),
+            },
+            header_lines=[
+                'Borehole gravity inversion result',
+                f'Well position: ({result.well.x}, {result.well.y})',
+                f'Depth range: {result.depths.min():.0f} ~ {result.depths.max():.0f} m',
+                f'RMSE: {result.rmse:.4f} mGal',
+            ]
+        )
+
+        recovered_mesh_name = f'{name}_recovered_model'
+        self.export_mesh_from_arrays(result.recovered_mesh_data, name=recovered_mesh_name)
+
+        scale = 100.0 / max(
+            np.max(np.abs(result.observed_gz)),
+            np.max(np.abs(result.predicted_gz)),
+            1e-10,
+        )
+        curve_points = np.column_stack([
+            result.well.x + result.predicted_gz * scale,
+            np.full_like(result.depths, result.well.y),
+            result.depths,
+        ])
+        lines = [(i, i + 1) for i in range(len(curve_points) - 1)]
+        filename_curve = f'{name}_curve.vtp'
+        write_vtp(
+            self._path(filename_curve),
+            points=curve_points,
+            polygons=lines,
+            point_data={
+                'observed_gz_mGal': result.observed_gz,
+                'predicted_gz_mGal': result.predicted_gz,
+                'residual_mGal': result.residual,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('gravity_inverse_curve', filename_curve)
+
+        filename_points = f'{name}_at_stations.vtu'
+        cells = [[1, i] for i in range(len(result.depths))]
+        cell_types = [VTK_VERTEX] * len(result.depths)
+        write_vtu(
+            self._path(filename_points),
+            points=result.well.stations,
+            cells=cells,
+            cell_types=cell_types,
+            point_data={
+                'observed_gz_mGal': result.observed_gz,
+                'predicted_gz_mGal': result.predicted_gz,
+                'residual_mGal': result.residual,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('gravity_inverse_stations', filename_points)
+
+    def export_magnetic_inversion_result(self, result, name='magnetic_inverse'):
+        """导出磁法反演结果。"""
+        print(f"\n  导出磁法反演结果...")
+
+        filename_csv = f'{name}_result.csv'
+        write_csv_with_header(
+            self._path(filename_csv),
+            columns={
+                'depth_m': result.depths,
+                'observed_bx_nT': result.observed_bx,
+                'observed_by_nT': result.observed_by,
+                'observed_bz_nT': result.observed_bz,
+                'observed_bt_nT': result.observed_bt,
+                'predicted_bx_nT': result.predicted_bx,
+                'predicted_by_nT': result.predicted_by,
+                'predicted_bz_nT': result.predicted_bz,
+                'predicted_bt_nT': result.predicted_bt,
+                'residual_bt_nT': result.residual_bt,
+            },
+            header_lines=[
+                'Borehole 3C magnetic inversion result',
+                f'Well position: ({result.well.x}, {result.well.y})',
+                f'Depth range: {result.depths.min():.0f} ~ {result.depths.max():.0f} m',
+                f'BT RMSE: {result.rmse_bt:.4f} nT',
+            ]
+        )
+
+        recovered_mesh = dict(result.recovered_mesh_data)
+        recovered_mesh['susceptibility'] = np.asarray(result.recovered_mesh_data['susceptibility'], dtype=float)
+        self.export_mesh_from_arrays(recovered_mesh, name=f'{name}_recovered_model')
+
+        scale = 100.0 / max(
+            np.max(np.abs(result.observed_bt)),
+            np.max(np.abs(result.predicted_bt)),
+            1e-10,
+        )
+        curve_points = np.column_stack([
+            result.well.x + result.predicted_bt * scale,
+            np.full_like(result.depths, result.well.y),
+            result.depths,
+        ])
+        lines = [(i, i + 1) for i in range(len(curve_points) - 1)]
+        filename_curve = f'{name}_curve.vtp'
+        write_vtp(
+            self._path(filename_curve),
+            points=curve_points,
+            polygons=lines,
+            point_data={
+                'observed_bt_nT': result.observed_bt,
+                'predicted_bt_nT': result.predicted_bt,
+                'residual_bt_nT': result.residual_bt,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('magnetic_inverse_curve', filename_curve)
+
+        filename_points = f'{name}_at_stations.vtu'
+        cells = [[1, i] for i in range(len(result.depths))]
+        cell_types = [VTK_VERTEX] * len(result.depths)
+        predicted_vector = np.column_stack([result.predicted_bx, result.predicted_by, result.predicted_bz])
+        observed_vector = np.column_stack([result.observed_bx, result.observed_by, result.observed_bz])
+        write_vtu(
+            self._path(filename_points),
+            points=result.well.stations,
+            cells=cells,
+            cell_types=cell_types,
+            point_data={
+                'observed_bx_nT': result.observed_bx,
+                'observed_by_nT': result.observed_by,
+                'observed_bz_nT': result.observed_bz,
+                'observed_bt_nT': result.observed_bt,
+                'predicted_bx_nT': result.predicted_bx,
+                'predicted_by_nT': result.predicted_by,
+                'predicted_bz_nT': result.predicted_bz,
+                'predicted_bt_nT': result.predicted_bt,
+                'residual_bt_nT': result.residual_bt,
+                'observed_b_vector_nT': observed_vector,
+                'predicted_b_vector_nT': predicted_vector,
+                'depth_m': result.depths,
+            }
+        )
+        self._register_block('magnetic_inverse_stations', filename_points)
     
     # ==========================================================
     #  生成总文件
@@ -523,6 +777,10 @@ class VTKExporter:
         write_vtm(self._path(filename), self.blocks)
         
         full_path = os.path.abspath(self._path(filename))
+        has_gravity = any(name.startswith('gravity_result_') for name, _ in self.blocks)
+        has_magnetic = any(name.startswith('magnetic_result_') for name, _ in self.blocks)
+        has_gravity_inverse = any(name.startswith('gravity_inverse_') for name, _ in self.blocks)
+        has_magnetic_inverse = any(name.startswith('magnetic_inverse_') for name, _ in self.blocks)
         
         print(f"""
     ╔══════════════════════════════════════════════════════╗
@@ -542,6 +800,37 @@ class VTKExporter:
     ║    3. 点击 Apply
     ║    4. 在左侧 Pipeline Browser 中
     ║       勾选/取消各个块的可见性
+    ║""")
+        if has_gravity:
+            print("""    ║
+    ║  重力结果建议:
+    ║    • 查看 gravity_result_curve 的曲线形态
+    ║    • 查看 gravity_result_stations 的井中采样点
+    ║""")
+        if has_gravity_inverse:
+            print("""    ║
+    ║  重力反演结果建议:
+    ║    • 查看 gravity_inverse_recovered_model 的 recovered density
+    ║    • 用 update_mask / fixed_mask 区分可更新区和固定区
+    ║    • 查看 gravity_inverse_curve 的观测/预测/残差拟合
+    ║    • 查看 gravity_inverse_stations 的残差点属性
+    ║""")
+        if has_magnetic:
+            print("""    ║
+    ║  磁法结果建议:
+    ║    • 查看 magnetic_result_curve 的 ΔT 曲线形态
+    ║    • 对 magnetic_result_stations 使用 Glyph，
+    ║      向量字段选择 b_vector_nT
+    ║""")
+        if has_magnetic_inverse:
+            print("""    ║
+    ║  磁法反演结果建议:
+    ║    • 查看 magnetic_inverse_recovered_model 的 susceptibility
+    ║    • 用 update_mask / fixed_mask 区分可更新区和固定区
+    ║    • 对 magnetic_inverse_stations 使用 Glyph，
+    ║      向量字段选择 observed_b_vector_nT / predicted_b_vector_nT
+    ║""")
+        print(f"""    ║
     ║                                                      ║
     ║  文件完整路径:
     ║    {full_path}
@@ -555,6 +844,8 @@ class VTKExporter:
     
     def export_all(self, octree_mesh=None, prism_mesh=None, tet_mesh=None,
                    well=None, bodies=None, gravity_result=None,
+                   magnetic_result=None, gravity_inverse_result=None,
+                   magnetic_inverse_result=None,
                    mesh_data=None, tet_properties=None):
         """
         一键导出所有可用的数据
@@ -585,5 +876,14 @@ class VTKExporter:
         
         if gravity_result is not None:
             self.export_gravity_result(gravity_result)
+
+        if gravity_inverse_result is not None:
+            self.export_gravity_inversion_result(gravity_inverse_result)
+        
+        if magnetic_result is not None:
+            self.export_magnetic_result(magnetic_result)
+
+        if magnetic_inverse_result is not None:
+            self.export_magnetic_inversion_result(magnetic_inverse_result)
         
         self.write_master_file()

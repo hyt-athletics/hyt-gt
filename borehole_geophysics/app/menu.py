@@ -16,8 +16,8 @@ BANNER = r"""
     ║     ██████╔╝ ██║  ██║ ╚██████╔╝ ██║      ███████║     ║
     ║     ╚═════╝  ╚═╝  ╚═╝  ╚═════╝  ╚═╝      ╚══════╝    ║
     ║                                                       ║
-    ║     Borehole Geophysics Platform  v1.0                ║
-    ║     钻孔地球物理交互建模与正演平台                       ║
+    ║     Borehole Geophysics Platform  v1.2                ║
+    ║     钻孔地球物理交互建模与多方法正反演平台                ║
     ║                                                       ║
     ╚═══════════════════════════════════════════════════════╝
 """
@@ -26,7 +26,7 @@ MENU = """
     ╔═══════════════════════════════════════════════════════╗
     ║                                                       ║
     ║     [1]  🎨  交互式建模        画矿体 + 地层线        ║
-    ║     [2]  📊  重力正演          网格 → 计算 → 曲线     ║
+    ║     [2]  📊  正演计算          按方法进入工作流        ║
     ║     [3]  🔬  网格工具          各类网格演示            ║
     ║     [4]  📦  导入/导出         模型 / VTK / CSV       ║
     ║     [5]  ⚡  性能测试          基准测试               ║
@@ -47,6 +47,7 @@ def check_dependencies():
         'pyvista': ('推荐（3D可视化）', False),
         'numba': ('推荐（性能加速）', False),
         'harmonica': ('可选（正演库）', False),
+        'simpeg': ('可选（外部反演库）', False),
     }
     
     print("\n  依赖库检查:")
@@ -76,17 +77,32 @@ def print_project_status(project):
     n_bodies = len(project.model_manager.bodies)
     n_layers = len(getattr(project.model_manager, 'layers', []))
     has_mesh = project.mesh_data is not None
-    has_result = project.gravity_result is not None
+    has_result = project.current_result is not None
+    has_inverse = project.inverse_result is not None
+    current_method = project.get_current_method()
+    has_observed = project.get_observed_result(current_method) is not None
     
     status_parts = []
+    status_parts.append(f"方法={current_method}")
     if n_bodies > 0:
         status_parts.append(f"{n_bodies}个地质体")
     if n_layers > 0:
         status_parts.append(f"{n_layers}条地层线")
     if has_mesh:
-        status_parts.append(f"网格✅")
+        mesh_qc = project.mesh_data.get('mesh_qc', {}) if project.mesh_data else {}
+        mesh_tag = project.mesh_purpose or '?'
+        if mesh_qc:
+            status_parts.append(
+                f"网格✅({mesh_tag},{project.mesh_data['n_cells']}格/ROI {mesh_qc.get('roi_cells', 0)})"
+            )
+        else:
+            status_parts.append(f"网格✅({mesh_tag})")
     if has_result:
-        status_parts.append(f"正演✅")
+        status_parts.append(f"正演✅({project.current_result_method})")
+    if has_inverse:
+        status_parts.append(f"反演✅({project.inverse_result_method})")
+    if has_observed:
+        status_parts.append("实测✅")
     
     if status_parts:
         status = " | ".join(status_parts)
@@ -100,7 +116,7 @@ def main_loop(project):
     """主菜单循环"""
     from app.workflows import (
         workflow_interactive_modeling,
-        workflow_gravity_forward,
+        workflow_forward_menu,
         workflow_mesh_tools,
         workflow_import_export,
         workflow_benchmark,
@@ -132,8 +148,7 @@ def main_loop(project):
             workflow_interactive_modeling(project)
         
         elif choice == '2':
-            workflow_gravity_forward(project)
-            input("\n  按Enter返回主菜单...")
+            workflow_forward_menu(project)
         
         elif choice == '3':
             workflow_mesh_tools(project)

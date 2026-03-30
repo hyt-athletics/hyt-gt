@@ -18,6 +18,7 @@ matplotlib.rcParams['axes.unicode_minus'] = False
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
+from matplotlib.lines import Line2D
 
 
 def plot_borehole_gravity(result, title=None, figsize=(6, 10)):
@@ -191,7 +192,7 @@ def plot_multi_well_gravity(results, figsize=(10, 10)):
     
     for i, result in enumerate(results):
         color = colors[i % len(colors)]
-        label = f'Well ({result.well.x:.0f}, {result.well.y:.0f})'
+        label = getattr(result, 'label', f'Well ({result.well.x:.0f}, {result.well.y:.0f})')
         ax.plot(result.gz, result.depths, '-', linewidth=2,
                color=color, label=label)
     
@@ -203,6 +204,202 @@ def plot_multi_well_gravity(results, figsize=(10, 10)):
     ax.axvline(x=0, color='gray', linewidth=0.5, linestyle='--')
     ax.legend(fontsize=10)
     
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_gravity_comparison(results, figsize=(10, 10)):
+    """同方法多次重力结果对比。"""
+    return plot_multi_well_gravity(results, figsize=figsize)
+
+
+def plot_gravity_model_vs_observed(modeled, observed, figsize=(7, 10)):
+    """当前正演结果与实测重力曲线对比。"""
+    fig, ax = plt.subplots(figsize=figsize)
+
+    ax.plot(modeled.gz, modeled.depths, linewidth=2.2, color='#1f77b4',
+            label=getattr(modeled, 'label', 'modeled'))
+    ax.plot(observed.gz, observed.depths, 'o--', linewidth=1.8, markersize=4,
+            color='#d62728', label=getattr(observed, 'label', 'observed'))
+
+    aligned_observed = np.interp(modeled.depths, observed.depths, observed.gz)
+    rmse = float(np.sqrt(np.mean((modeled.gz - aligned_observed) ** 2)))
+
+    ax.set_xlabel('gz (mGal)', fontsize=12)
+    ax.set_ylabel('Depth (m)', fontsize=12)
+    ax.set_title(f'Gravity: Modeled vs Observed  RMSE={rmse:.4f} mGal', fontsize=13)
+    ax.invert_yaxis()
+    ax.grid(True, alpha=0.3)
+    ax.axvline(x=0, color='gray', linewidth=0.5, linestyle='--')
+    ax.legend(loc='best')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_gravity_inversion_result(result, figsize=(14, 10)):
+    """显示重力反演结果的观测/预测对比、恢复密度切片和直方图。"""
+    fig, (ax_curve, ax_slice, ax_hist) = plt.subplots(
+        1, 3, figsize=figsize, gridspec_kw={'width_ratios': [1.1, 1.4, 1]}
+    )
+
+    ax_curve.plot(result.observed_gz, result.depths, 'o--', color='#d62728',
+                  markersize=4, linewidth=1.6, label='observed')
+    ax_curve.plot(result.predicted_gz, result.depths, '-', color='#1f77b4',
+                  linewidth=2.2, label='predicted')
+    ax_curve.set_xlabel('gz (mGal)', fontsize=12)
+    ax_curve.set_ylabel('Depth (m)', fontsize=12)
+    ax_curve.set_title(f'Gravity Inversion Fit\nRMSE={result.rmse:.4f} mGal', fontsize=13)
+    ax_curve.invert_yaxis()
+    ax_curve.grid(True, alpha=0.3)
+    ax_curve.axvline(0, color='gray', linewidth=0.5, linestyle='--')
+    ax_curve.legend(loc='best')
+
+    _plot_inverse_density_slice(ax_slice, result, bodies=None, slice_y=result.well.y)
+
+    density = np.asarray(result.recovered_density, dtype=float)
+    update_mask = result.recovered_mesh_data.get('update_mask')
+    fixed_mask = result.recovered_mesh_data.get('fixed_mask')
+    if update_mask is not None and fixed_mask is not None:
+        ax_hist.hist(density[np.asarray(fixed_mask, dtype=bool)], bins=30,
+                     color='#b0b0b0', alpha=0.65, edgecolor='white', label='fixed')
+        ax_hist.hist(density[np.asarray(update_mask, dtype=bool)], bins=30,
+                     color='#4c72b0', alpha=0.8, edgecolor='white', label='updated')
+        ax_hist.legend(loc='best')
+    else:
+        ax_hist.hist(density, bins=30, color='#4c72b0', alpha=0.85, edgecolor='white')
+    ax_hist.set_xlabel('Recovered density (g/cc)', fontsize=12)
+    ax_hist.set_ylabel('Cell count', fontsize=12)
+    ax_hist.set_title('Recovered Model Histogram', fontsize=13)
+    ax_hist.grid(True, alpha=0.2)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def _extract_density_xz_slice(mesh_data, slice_y=None):
+    """从 recovered mesh_data 提取最接近指定 y 的 XZ 切片。"""
+    centers = np.asarray(mesh_data['centers'], dtype=float)
+    sizes = np.asarray(mesh_data['sizes'], dtype=float)
+    density = np.asarray(mesh_data['density'], dtype=float)
+    update_mask = mesh_data.get('update_mask')
+    fixed_mask = mesh_data.get('fixed_mask')
+
+    y_values = np.unique(np.round(centers[:, 1], 10))
+    if len(y_values) == 0:
+        raise ValueError("recovered mesh_data 中没有可用单元")
+
+    target_y = float(slice_y if slice_y is not None else y_values[len(y_values) // 2])
+    actual_y = float(y_values[np.argmin(np.abs(y_values - target_y))])
+    dy = float(np.median(sizes[:, 1]))
+    mask = np.abs(centers[:, 1] - actual_y) <= dy * 0.51
+    slice_centers = centers[mask]
+    slice_density = density[mask]
+    slice_update_mask = None if update_mask is None else np.asarray(update_mask, dtype=bool)[mask]
+    slice_fixed_mask = None if fixed_mask is None else np.asarray(fixed_mask, dtype=bool)[mask]
+    if len(slice_centers) == 0:
+        raise ValueError("未找到对应 y 切片单元")
+
+    x_values = np.unique(np.round(slice_centers[:, 0], 10))
+    z_values = np.unique(np.round(slice_centers[:, 2], 10))
+    grid = np.full((len(z_values), len(x_values)), np.nan, dtype=float)
+    update_grid = None if slice_update_mask is None else np.full((len(z_values), len(x_values)), np.nan, dtype=float)
+    fixed_grid = None if slice_fixed_mask is None else np.full((len(z_values), len(x_values)), np.nan, dtype=float)
+
+    x_index = {float(v): i for i, v in enumerate(x_values)}
+    z_index = {float(v): i for i, v in enumerate(z_values)}
+    for center, value in zip(slice_centers, slice_density):
+        ix = x_index[float(round(center[0], 10))]
+        iz = z_index[float(round(center[2], 10))]
+        grid[iz, ix] = value
+    if slice_update_mask is not None:
+        for center, value in zip(slice_centers, slice_update_mask):
+            ix = x_index[float(round(center[0], 10))]
+            iz = z_index[float(round(center[2], 10))]
+            update_grid[iz, ix] = 1.0 if value else 0.0
+    if slice_fixed_mask is not None:
+        for center, value in zip(slice_centers, slice_fixed_mask):
+            ix = x_index[float(round(center[0], 10))]
+            iz = z_index[float(round(center[2], 10))]
+            fixed_grid[iz, ix] = 1.0 if value else 0.0
+
+    dx = float(np.median(sizes[:, 0]))
+    dz = float(np.median(sizes[:, 2]))
+    extent = [
+        float(x_values.min() - dx / 2.0),
+        float(x_values.max() + dx / 2.0),
+        float(z_values.max() + dz / 2.0),
+        float(z_values.min() - dz / 2.0),
+    ]
+    return grid, extent, actual_y, update_grid, fixed_grid
+
+
+def _plot_inverse_density_slice(ax, result, bodies=None, slice_y=None):
+    """在指定坐标轴上绘制 recovered density 的 XZ 切片。"""
+    grid, extent, actual_y, update_grid, fixed_grid = _extract_density_xz_slice(
+        result.recovered_mesh_data, slice_y=slice_y
+    )
+
+    image = ax.imshow(
+        grid,
+        extent=extent,
+        origin='upper',
+        aspect='auto',
+        cmap='RdBu_r',
+    )
+    ax.set_xlabel('X (m)', fontsize=12)
+    ax.set_ylabel('Depth (m)', fontsize=12)
+    update_mode = result.metadata.get('update_mode')
+    title = f'Recovered Density Slice\nY={actual_y:.1f} m'
+    if update_mode:
+        title += f'  [{update_mode}]'
+    ax.set_title(title, fontsize=13)
+    ax.grid(False)
+
+    if update_grid is not None:
+        ax.contour(
+            np.where(np.isnan(update_grid), 0.0, update_grid),
+            levels=[0.5],
+            extent=extent,
+            origin='upper',
+            colors='black',
+            linewidths=1.2,
+        )
+    if fixed_grid is not None:
+        ax.contour(
+            np.where(np.isnan(fixed_grid), 0.0, fixed_grid),
+            levels=[0.5],
+            extent=extent,
+            origin='upper',
+            colors='#666666',
+            linewidths=0.8,
+            linestyles=':',
+        )
+        legend_handles = [
+            Line2D([0], [0], color='black', linewidth=1.2, label='updated zone'),
+            Line2D([0], [0], color='#666666', linewidth=1.0, linestyle=':', label='fixed zone'),
+        ]
+        ax.legend(handles=legend_handles, loc='upper right', fontsize=8, framealpha=0.9)
+
+    if bodies:
+        for body in bodies:
+            polygon = MplPolygon(
+                body.vertices_xz, closed=True,
+                facecolor=body.color, alpha=0.18,
+                edgecolor=body.color, linewidth=1.5
+            )
+            ax.add_patch(polygon)
+
+    ax.axvline(result.well.x, color='black', linewidth=1.8, linestyle='--')
+    ax.plot(result.well.stations[:, 0], result.well.stations[:, 2],
+            'k.', markersize=3, zorder=10)
+    plt.colorbar(image, ax=ax, fraction=0.046, pad=0.04, label='Density (g/cc)')
+
+
+def plot_gravity_inverse_density_slice(result, bodies=None, slice_y=None, figsize=(8, 8)):
+    """单独显示 recovered density 的 XZ 切片。"""
+    fig, ax = plt.subplots(figsize=figsize)
+    _plot_inverse_density_slice(ax, result, bodies=bodies, slice_y=slice_y)
     plt.tight_layout()
     plt.show()
 

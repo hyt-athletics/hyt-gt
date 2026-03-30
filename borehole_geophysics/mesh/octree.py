@@ -12,6 +12,22 @@
 import numpy as np
 
 
+CELL_PROPERTY_DEFAULTS = {
+    'density': 0.0,
+    'susceptibility': 0.0,
+    'resistivity': 100.0,
+    'conductivity': 0.01,
+    'chargeability': 0.0,
+    'vp': 3000.0,
+    'vs': 1500.0,
+    'permittivity': 1.0,
+    'quality_factor': 100.0,
+    'remanent_mag': 0.0,
+    'remanent_inclination': 0.0,
+    'remanent_declination': 0.0,
+}
+
+
 class OctreeNode:
     """
     八叉树的一个节点 = 一个方块
@@ -43,10 +59,17 @@ class OctreeNode:
         self.children = None
         
         # 物性值（只有叶节点需要）
-        self.density = 0.0
-        self.susceptibility = 0.0
-        self.resistivity = 100.0
-        self.velocity = 3000.0
+        for key, value in CELL_PROPERTY_DEFAULTS.items():
+            setattr(self, key, float(value))
+
+    @property
+    def velocity(self):
+        """向后兼容旧字段 velocity。"""
+        return self.vp
+
+    @velocity.setter
+    def velocity(self, value):
+        self.vp = float(value)
     
     @property
     def center(self):
@@ -109,10 +132,8 @@ class OctreeNode:
         
         # 子方块继承父方块的物性
         for child in self.children:
-            child.density = self.density
-            child.susceptibility = self.susceptibility
-            child.resistivity = self.resistivity
-            child.velocity = self.velocity
+            for key in CELL_PROPERTY_DEFAULTS:
+                setattr(child, key, getattr(self, key))
         
         self.is_leaf = False
     
@@ -209,6 +230,29 @@ class OctreeMesh:
         在几何体的边界处加密
         """
         self._refine_boundary_recursive(self.root, geometry_func, target_level)
+
+    def refine_in_box(self, x_range, y_range, z_range, target_level):
+        """在轴对齐包围盒内加密。"""
+        self._refine_box_recursive(
+            self.root,
+            tuple(x_range),
+            tuple(y_range),
+            tuple(z_range),
+            target_level,
+        )
+
+    def _refine_box_recursive(self, node, x_range, y_range, z_range, target_level):
+        """递归实现包围盒加密。"""
+        if node.level >= target_level or node.level >= self.max_level:
+            return
+        if not self._box_intersects_box(node, x_range, y_range, z_range):
+            return
+
+        if node.is_leaf:
+            node.subdivide()
+
+        for child in node.children:
+            self._refine_box_recursive(child, x_range, y_range, z_range, target_level)
     
     def _refine_boundary_recursive(self, node, geometry_func, target_level):
         """递归实现边界加密"""
@@ -359,7 +403,17 @@ class OctreeMesh:
         density = np.array([leaf.density for leaf in leaves])
         susceptibility = np.array([leaf.susceptibility for leaf in leaves])
         resistivity = np.array([leaf.resistivity for leaf in leaves])
-        velocity = np.array([leaf.velocity for leaf in leaves])
+        conductivity = np.array([leaf.conductivity for leaf in leaves])
+        chargeability = np.array([leaf.chargeability for leaf in leaves])
+        vp = np.array([leaf.vp for leaf in leaves])
+        vs = np.array([leaf.vs for leaf in leaves])
+        permittivity = np.array([leaf.permittivity for leaf in leaves])
+        quality_factor = np.array([leaf.quality_factor for leaf in leaves])
+        remanent_mag = np.array([leaf.remanent_mag for leaf in leaves])
+        remanent_inclination = np.array([leaf.remanent_inclination for leaf in leaves])
+        remanent_declination = np.array([leaf.remanent_declination for leaf in leaves])
+        octree_level = np.array([leaf.level for leaf in leaves], dtype=int)
+        cell_size = np.array([leaf.min_edge for leaf in leaves], dtype=float)
         
         return {
             'centers': centers,
@@ -368,7 +422,18 @@ class OctreeMesh:
             'density': density,
             'susceptibility': susceptibility,
             'resistivity': resistivity,
-            'velocity': velocity,
+            'conductivity': conductivity,
+            'chargeability': chargeability,
+            'vp': vp,
+            'vs': vs,
+            'permittivity': permittivity,
+            'quality_factor': quality_factor,
+            'remanent_mag': remanent_mag,
+            'remanent_inclination': remanent_inclination,
+            'remanent_declination': remanent_declination,
+            'octree_level': octree_level,
+            'cell_size': cell_size,
+            'velocity': vp,
             'n_cells': len(leaves)
         }
     
@@ -381,3 +446,12 @@ class OctreeMesh:
         cz = max(node.z_min, min(pz, node.z_max))
         dist_sq = (cx - px)**2 + (cy - py)**2 + (cz - pz)**2
         return dist_sq <= radius * radius
+
+    @staticmethod
+    def _box_intersects_box(node, x_range, y_range, z_range):
+        """判断方块是否与轴对齐包围盒相交。"""
+        return not (
+            node.x_max < x_range[0] or node.x_min > x_range[1] or
+            node.y_max < y_range[0] or node.y_min > y_range[1] or
+            node.z_max < z_range[0] or node.z_min > z_range[1]
+        )

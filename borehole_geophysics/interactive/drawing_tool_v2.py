@@ -25,7 +25,13 @@ matplotlib.rcParams['axes.unicode_minus'] = False
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon as MplPolygon
 from matplotlib.lines import Line2D
-from interactive.body_manager import ModelManager, GeologicalBody, BODY_COLORS
+from interactive.body_manager import (
+    BODY_COLORS,
+    BODY_PROPERTY_DEFAULTS,
+    BODY_PROPERTY_GROUPS,
+    ModelManager,
+    GeologicalBody,
+)
 from interactive.commands import (
     CommandHistory, AddBodyCommand, DeleteBodyCommand,
     MoveBodyCommand, MoveVertexCommand, EditPropertyCommand,
@@ -441,9 +447,10 @@ class InteractiveDrawingToolV2:
         
         body = GeologicalBody(
             name=props['name'], vertices_xz=verts,
-            density=props['density'], y_range=props['y_range'],
+            y_range=props['y_range'],
             color=self.manager.get_next_color()
         )
+        body.update_properties(props)
         cmd = AddBodyCommand(self.manager, body)
         self.history.execute(cmd)
         
@@ -487,9 +494,10 @@ class InteractiveDrawingToolV2:
         
         body = GeologicalBody(
             name=props['name'], vertices_xz=verts,
-            density=props['density'], y_range=props['y_range'],
+            y_range=props['y_range'],
             color=self.manager.get_next_color()
         )
+        body.update_properties(props)
         cmd = AddBodyCommand(self.manager, body)
         self.history.execute(cmd)
         
@@ -531,9 +539,10 @@ class InteractiveDrawingToolV2:
         
         body = GeologicalBody(
             name=props['name'], vertices_xz=verts,
-            density=props['density'], y_range=props['y_range'],
+            y_range=props['y_range'],
             color=self.manager.get_next_color()
         )
+        body.update_properties(props)
         cmd = AddBodyCommand(self.manager, body)
         self.history.execute(cmd)
         
@@ -771,56 +780,32 @@ class InteractiveDrawingToolV2:
             return
         
         body = self.manager.bodies[idx]
+        props = self._ask_properties(
+            default_values=body.property_form_defaults(),
+            title=f'编辑地质体: {body.name}'
+        )
+        if props is None:
+            return
         
-        try:
-            import tkinter as tk
-            from tkinter import simpledialog
-            
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)
-            
-            new_density = simpledialog.askfloat(
-                "编辑物性",
-                f"地质体: {body.name}\n"
-                f"当前密度差: {body.density} g/cm³\n\n"
-                f"输入新的密度差:",
-                initialvalue=body.density,
-                parent=root
-            )
-            
-            if new_density is not None:
-                new_name = simpledialog.askstring(
-                    "编辑名称",
-                    f"当前名称: {body.name}\n输入新名称 (留空不改):",
-                    initialvalue=body.name,
-                    parent=root
-                )
-                
-                if new_density != body.density:
-                    cmd = EditPropertyCommand(self.manager, idx, 'density', new_density)
-                    self.history.execute(cmd)
-                
-                if new_name and new_name != body.name:
-                    cmd2 = EditPropertyCommand(self.manager, idx, 'name', new_name)
-                    self.history.execute(cmd2)
-                
-                self._redraw_all()
-                self._update_status(f'✅ 已更新 "{body.name}" ρ={body.density}')
-            
-            root.destroy()
-        except Exception:
-            # 终端备用
-            print(f"\n  编辑: {body.name}")
-            try:
-                new_d = float(input(f"  密度差 [{body.density}]: ").strip() or str(body.density))
-                if new_d != body.density:
-                    cmd = EditPropertyCommand(self.manager, idx, 'density', new_d)
-                    self.history.execute(cmd)
-                    self._redraw_all()
-                    self._update_status(f'✅ 密度已更新: {new_d}')
-            except ValueError:
-                pass
+        changed = False
+        if props['name'] != body.name:
+            self.history.execute(EditPropertyCommand(self.manager, idx, 'name', props['name']))
+            changed = True
+        
+        if props['y_range'] != body.y_range:
+            self.history.execute(EditPropertyCommand(self.manager, idx, 'y_range', props['y_range']))
+            changed = True
+        
+        for key in BODY_PROPERTY_DEFAULTS:
+            new_value = props[key]
+            old_value = getattr(body, key)
+            if abs(new_value - old_value) > 1e-12:
+                self.history.execute(EditPropertyCommand(self.manager, idx, key, new_value))
+                changed = True
+        
+        if changed:
+            self._redraw_all()
+            self._update_status(f'✅ 已更新 "{self.manager.bodies[idx].name}"')
     
     # =============================================================
     #  删除
@@ -911,8 +896,13 @@ class InteractiveDrawingToolV2:
     def _do_compute(self):
         if self.on_compute:
             self._update_status('正在计算...')
-            self.on_compute()
-            self._update_status('✅ 计算完成')
+            try:
+                self.on_compute()
+            except Exception as exc:
+                self._update_status(f'❌ 计算失败: {exc}')
+                raise
+            else:
+                self._update_status('✅ 计算完成')
         else:
             self._update_status('⚠️ 正演计算未连接')
     
@@ -1082,8 +1072,15 @@ class InteractiveDrawingToolV2:
             self._body_patches.append(polygon)
             
             cx, cz = body.centroid_2d()
+            property_lines = [body.name]
+            if abs(body.density) > 1e-12:
+                property_lines.append(f'ρ={body.density:.2f}')
+            if abs(body.susceptibility) > 1e-12:
+                property_lines.append(f'χ={body.susceptibility:.3f}')
+            if len(property_lines) == 1:
+                property_lines.append('背景体')
             label = self.ax.text(
-                cx, cz, f'{body.name}\nρ={body.density:.2f}',
+                cx, cz, '\n'.join(property_lines),
                 ha='center', va='center', fontsize=8, fontweight='bold',
                 color='white',
                 bbox=dict(boxstyle='round,pad=0.2', facecolor=body.color, alpha=0.7),
@@ -1125,37 +1122,120 @@ class InteractiveDrawingToolV2:
     #  属性输入
     # =============================================================
     
-    def _ask_properties(self):
+    def _ask_properties(self, default_values=None, title='地质体属性'):
         default_name = self.manager.get_next_name()
+        values = {
+            'name': default_name,
+            'y_min': 300.0,
+            'y_max': 700.0,
+        }
+        values.update(BODY_PROPERTY_DEFAULTS)
+        if default_values:
+            values.update(default_values)
+        
         try:
-            import tkinter as tk
-            from tkinter import simpledialog
-            root = tk.Tk(); root.withdraw(); root.attributes('-topmost', True)
-            name = simpledialog.askstring("名称", "地质体名称:", initialvalue=default_name, parent=root)
-            if name is None: root.destroy(); return None
-            density = simpledialog.askfloat("密度差", "密度差 (g/cm³):", initialvalue=0.5, parent=root)
-            if density is None: density = 0.5
-            y_min = simpledialog.askfloat("Y起始", "Y起始 (m):", initialvalue=300.0, parent=root)
-            y_max = simpledialog.askfloat("Y结束", "Y结束 (m):", initialvalue=700.0, parent=root)
-            root.destroy()
-            return {'name': name, 'density': density, 'y_range': (min(y_min or 300, y_max or 700), max(y_min or 300, y_max or 700))}
+            return self._ask_properties_gui(values, title)
         except Exception:
-            return self._ask_properties_terminal(default_name)
+            return self._ask_properties_terminal(values, title)
+
+    def _ask_properties_gui(self, values, title):
+        import tkinter as tk
+        from tkinter import messagebox
+        
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        
+        dialog = tk.Toplevel(root)
+        dialog.title(title)
+        dialog.attributes('-topmost', True)
+        dialog.resizable(False, False)
+        dialog.grab_set()
+        
+        vars_map = {}
+        for key, value in values.items():
+            vars_map[key] = tk.StringVar(value=str(value))
+        
+        container = tk.Frame(dialog, padx=12, pady=10)
+        container.pack(fill='both', expand=True)
+        
+        for group_name, fields in BODY_PROPERTY_GROUPS.items():
+            frame = tk.LabelFrame(container, text=group_name, padx=8, pady=6)
+            frame.pack(fill='x', expand=True, pady=4)
+            for row_idx, (key, label) in enumerate(fields):
+                tk.Label(frame, text=label, anchor='w', width=22).grid(
+                    row=row_idx, column=0, sticky='w', padx=(0, 8), pady=2
+                )
+                tk.Entry(frame, textvariable=vars_map[key], width=18).grid(
+                    row=row_idx, column=1, sticky='ew', pady=2
+                )
+        
+        result = {'data': None}
+        
+        def on_ok():
+            try:
+                result['data'] = self._normalize_property_values(
+                    {key: var.get() for key, var in vars_map.items()}
+                )
+            except ValueError as exc:
+                messagebox.showerror("输入错误", str(exc), parent=dialog)
+                return
+            dialog.destroy()
+        
+        def on_cancel():
+            dialog.destroy()
+        
+        button_frame = tk.Frame(container, pady=6)
+        button_frame.pack(fill='x')
+        tk.Button(button_frame, text='确定', width=10, command=on_ok).pack(side='right', padx=(8, 0))
+        tk.Button(button_frame, text='取消', width=10, command=on_cancel).pack(side='right')
+        
+        dialog.protocol("WM_DELETE_WINDOW", on_cancel)
+        dialog.wait_window()
+        root.destroy()
+        return result['data']
     
-    def _ask_properties_terminal(self, default_name):
-        print(f"\n{'='*40}")
-        name = input(f"  名称 [{default_name}]: ").strip() or default_name
+    def _ask_properties_terminal(self, values, title):
+        print(f"\n{'='*48}")
+        print(f"  {title}")
+        print(f"{'='*48}")
+        raw_values = {}
+        for group_name, fields in BODY_PROPERTY_GROUPS.items():
+            print(f"\n  [{group_name}]")
+            for key, label in fields:
+                raw_values[key] = input(f"  {label} [{values[key]}]: ").strip() or str(values[key])
+        print()
         try:
-            density = float(input("  密度差 [0.5]: ").strip() or "0.5")
-        except ValueError:
-            density = 0.5
+            return self._normalize_property_values(raw_values)
+        except ValueError as exc:
+            print(f"  ⚠️ {exc}")
+            return None
+
+    def _normalize_property_values(self, raw_values):
+        name = str(raw_values['name']).strip()
+        if not name:
+            raise ValueError("名称不能为空")
+        
         try:
-            y_min = float(input("  Y起始 [300]: ").strip() or "300")
-            y_max = float(input("  Y结束 [700]: ").strip() or "700")
-        except ValueError:
-            y_min, y_max = 300, 700
-        print(f"{'='*40}\n")
-        return {'name': name, 'density': density, 'y_range': (min(y_min, y_max), max(y_min, y_max))}
+            y_min = float(raw_values['y_min'])
+            y_max = float(raw_values['y_max'])
+        except ValueError as exc:
+            raise ValueError("Y范围必须是数值") from exc
+        
+        normalized = {
+            'name': name,
+            'y_range': (min(y_min, y_max), max(y_min, y_max)),
+        }
+        for key in BODY_PROPERTY_DEFAULTS:
+            try:
+                normalized[key] = float(raw_values[key])
+            except ValueError as exc:
+                label = next(
+                    (label for fields in BODY_PROPERTY_GROUPS.values() for field, label in fields if field == key),
+                    key
+                )
+                raise ValueError(f"{label} 必须是数值") from exc
+        return normalized
     
     def _ask_layer_properties(self):
         n_layers = len(getattr(self.manager, 'layers', []))
