@@ -16,6 +16,51 @@ import json
 import os
 
 
+# 多方法统一物性字段
+BODY_PROPERTY_DEFAULTS = {
+    'density': 0.0,
+    'susceptibility': 0.0,
+    'resistivity': 100.0,
+    'conductivity': 0.01,
+    'chargeability': 0.0,
+    'vp': 3000.0,
+    'vs': 1500.0,
+    'permittivity': 1.0,
+    'quality_factor': 100.0,
+    'remanent_mag': 0.0,
+    'remanent_inclination': 0.0,
+    'remanent_declination': 0.0,
+}
+
+BODY_PROPERTY_GROUPS = {
+    '基本属性': [
+        ('name', '名称'),
+        ('y_min', 'Y起始 (m)'),
+        ('y_max', 'Y结束 (m)'),
+    ],
+    '重力/磁法': [
+        ('density', '密度差 (g/cm³)'),
+        ('susceptibility', '磁化率 (SI)'),
+    ],
+    '电法/电磁': [
+        ('resistivity', '电阻率 (Ω·m)'),
+        ('conductivity', '电导率 (S/m)'),
+        ('chargeability', '极化率 (V/V)'),
+        ('permittivity', '相对介电常数'),
+    ],
+    '声波/地震': [
+        ('vp', 'P波速度 (m/s)'),
+        ('vs', 'S波速度 (m/s)'),
+        ('quality_factor', '品质因子 Q'),
+    ],
+    '磁法高级': [
+        ('remanent_mag', '剩余磁化强度 (A/m)'),
+        ('remanent_inclination', '剩余磁化倾角 (°)'),
+        ('remanent_declination', '剩余磁化偏角 (°)'),
+    ],
+}
+
+
 # 预定义颜色（画新的体时自动分配）
 BODY_COLORS = [
     '#e74c3c',  # 红
@@ -41,7 +86,7 @@ class GeologicalBody:
     """
     
     def __init__(self, name, vertices_xz, density=0.0,
-                 y_range=(0, 1000), color='#e74c3c'):
+                 y_range=(0, 1000), color='#e74c3c', **property_values):
         """
         参数:
             name: 地质体名称，如 "矿体1"
@@ -52,12 +97,61 @@ class GeologicalBody:
         """
         self.name = name
         self.vertices_xz = list(vertices_xz)  # [(x,z), ...]
-        self.density = density
-        self.susceptibility = 0.0
-        self.resistivity = 100.0
-        self.velocity = 3000.0
         self.y_range = tuple(y_range)
         self.color = color
+        
+        for key, value in BODY_PROPERTY_DEFAULTS.items():
+            setattr(self, key, float(value))
+        
+        self.density = float(density)
+        self.update_properties(property_values)
+
+    @property
+    def velocity(self):
+        """向后兼容旧字段 velocity。"""
+        return self.vp
+
+    @velocity.setter
+    def velocity(self, value):
+        self.vp = float(value)
+
+    def update_properties(self, properties):
+        """批量更新物性，兼容旧字段并维护派生值。"""
+        if not properties:
+            self._sync_derived_properties()
+            return
+        
+        normalized = dict(properties)
+        if 'velocity' in normalized and 'vp' not in normalized:
+            normalized['vp'] = normalized.pop('velocity')
+        
+        for key in BODY_PROPERTY_DEFAULTS:
+            if key in normalized and normalized[key] is not None:
+                setattr(self, key, float(normalized[key]))
+        
+        self._sync_derived_properties(explicit_conductivity='conductivity' in normalized)
+
+    def _sync_derived_properties(self, explicit_conductivity=False):
+        """同步由其他物性推导出的字段。"""
+        if not explicit_conductivity:
+            if self.resistivity > 0:
+                self.conductivity = 1.0 / self.resistivity
+            else:
+                self.conductivity = 0.0
+
+    def to_property_dict(self):
+        """返回当前物性字段。"""
+        return {key: getattr(self, key) for key in BODY_PROPERTY_DEFAULTS}
+
+    def property_form_defaults(self):
+        """供交互表单使用的默认值。"""
+        values = self.to_property_dict()
+        values.update({
+            'name': self.name,
+            'y_min': self.y_range[0],
+            'y_max': self.y_range[1],
+        })
+        return values
     
     def contains_point_2d(self, px, pz):
         """判断点(px, pz)是否在多边形内（射线法）"""
@@ -94,19 +188,46 @@ class GeologicalBody:
             x2, z2 = pts[(i + 1) % n]
             area += x1 * z2 - x2 * z1
         return abs(area) / 2
+
+    def bounds_2d(self):
+        """XZ 截面的包围盒。"""
+        pts = np.asarray(self.vertices_xz, dtype=float)
+        return (
+            (float(np.min(pts[:, 0])), float(np.max(pts[:, 0]))),
+            (float(np.min(pts[:, 1])), float(np.max(pts[:, 1]))),
+        )
+
+    def bounds_3d(self, padding=0.0):
+        """3D 包围盒，支持统一外扩。"""
+        (x_min, x_max), (z_min, z_max) = self.bounds_2d()
+        y_min, y_max = self.y_range
+        pad = float(max(0.0, padding))
+        return {
+            'x_range': (x_min - pad, x_max + pad),
+            'y_range': (float(y_min) - pad, float(y_max) + pad),
+            'z_range': (z_min - pad, z_max + pad),
+        }
+
+    def extents_3d(self):
+        """返回地质体三向尺度。"""
+        bounds = self.bounds_3d(padding=0.0)
+        return (
+            bounds['x_range'][1] - bounds['x_range'][0],
+            bounds['y_range'][1] - bounds['y_range'][0],
+            bounds['z_range'][1] - bounds['z_range'][0],
+        )
     
     def to_dict(self):
         """转成字典（用于保存）"""
-        return {
+        data = {
             'name': self.name,
             'vertices_xz': self.vertices_xz,
-            'density': self.density,
-            'susceptibility': self.susceptibility,
-            'resistivity': self.resistivity,
-            'velocity': self.velocity,
             'y_range': list(self.y_range),
             'color': self.color,
         }
+        data.update(self.to_property_dict())
+        data['velocity'] = self.velocity
+        return data
     
     @classmethod
     def from_dict(cls, d):
@@ -118,9 +239,7 @@ class GeologicalBody:
             y_range=tuple(d.get('y_range', (0, 1000))),
             color=d.get('color', '#e74c3c'),
         )
-        body.susceptibility = d.get('susceptibility', 0.0)
-        body.resistivity = d.get('resistivity', 100.0)
-        body.velocity = d.get('velocity', 3000.0)
+        body.update_properties(d)
         return body
 
 

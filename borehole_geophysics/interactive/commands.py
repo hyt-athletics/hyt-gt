@@ -194,10 +194,14 @@ class EditPropertyCommand:
     def execute(self):
         body = self.manager.bodies[self.index]
         setattr(body, self.prop_name, self.new_value)
+        if hasattr(body, '_sync_derived_properties'):
+            body._sync_derived_properties(explicit_conductivity=self.prop_name == 'conductivity')
     
     def undo(self):
         body = self.manager.bodies[self.index]
         setattr(body, self.prop_name, self.old_value)
+        if hasattr(body, '_sync_derived_properties'):
+            body._sync_derived_properties(explicit_conductivity=self.prop_name == 'conductivity')
 
 
 class AddLayerCommand:

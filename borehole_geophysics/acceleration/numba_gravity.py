@@ -14,10 +14,8 @@ try:
     import numba
     from numba import njit, prange
     HAS_NUMBA = True
-    print("  ✅ Numba已安装，将使用JIT加速")
 except ImportError:
     HAS_NUMBA = False
-    print("  ⚠️ Numba未安装，将使用NumPy向量化（pip install numba 可以更快）")
 
 
 # 物理常数
